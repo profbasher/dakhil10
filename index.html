@@ -2,146 +2,183 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Result Web App</title>
+  <title>Results App</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-6">
-  <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold mb-4">Enter Student Result</h1>
-    <form id="studentForm" class="grid grid-cols-2 gap-4">
-      <div><label>Roll *</label><input name="roll" required class="w-full border p-2"/></div>
-      <div><label>Name *</label><input name="name" required class="w-full border p-2"/></div>
-      <!-- Numeric fields -->
-      <script>
-        const fields = [
-          'kuran_tajvid','akaid_fikah','hadis','gmath','chemistry_ict',
-          'arabic1','arabic2','english1','english2',
-          'bengali1','bengali2','ishistory_physics',
-          'phedu_bio','ag_hmath'
-        ];
-        fields.forEach(f => {
-          document.write(`<div><label>${f.replace(/_/g,' ').toUpperCase()}</label><input name="${f}" type="text" class="w-full border p-2"/></div>`);
-        });
-      </script>
-      <div class="col-span-2 flex space-x-4 mt-4">
-        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
-        <button type="button" id="searchBtn" class="bg-yellow-500 text-white px-4 py-2 rounded">Search</button>
-        <button type="button" id="printBtn" class="bg-green-500 text-white px-4 py-2 rounded">Print</button>
-      </div>
-    </form>
+  <h1 class="text-2xl mb-4">Results Entry</h1>
 
-    <h2 class="text-xl font-bold mt-8 mb-4">Results</h2>
-    <div class="overflow-auto max-h-96">
-      <table class="min-w-full bg-white" id="resultsTable">
-        <thead><tr>
-          <th class="p-2 border">Roll</th><th class="p-2 border">Name</th><th class="p-2 border">Total</th><th class="p-2 border">PF</th>
-          <script>
-            ['kuran_tajvid','akaid_fikah','hadis','arabic1','arabic2',
-            'english1','english2','bengali1','bengali2','ishistory_physics',
-            'gmath','phedu_bio','chemistry_ict','ag_hmath','cgpa','grade'
-            ].forEach(c => document.write(`<th class="p-2 border">${c.replace(/_/g,' ').toUpperCase()}</th>`));
-          </script>
-          <th class="p-2 border">Actions</th>
-        </tr></thead>
-        <tbody></tbody>
-      </table>
+  <form id="entryForm" class="bg-white p-4 rounded shadow mb-6 space-y-4">
+    <div class="grid grid-cols-2 gap-4">
+      <input name="name" placeholder="Name" required class="input-base" />
+      <input name="roll" placeholder="Roll" required class="input-base"/>
+      <!-- Score inputs: -->
+      <template id="score-template">
+        <div class="col-span-1">
+          <label class="block text-sm text-gray-700"></label>
+          <input type="text" name="" placeholder="e.g. 45+22" class="input-base"/>
+        </div>
+      </template>
     </div>
+    <!-- Add all required score fields -->
+    <div id="scoresGrid" class="grid grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    <div class="flex space-x-2">
+      <button type="submit" class="btn-blue">Save</button>
+      <button type="button" id="resetBtn" class="btn-gray">Reset</button>
+      <button type="button" id="searchBtn" class="btn-yellow">Search by Roll</button>
+    </div>
+  </form>
+
+  <div class="flex justify-between mb-4">
+    <h2 class="text-xl">Records</h2>
+    <button id="printBtn" class="btn-green">Print</button>
   </div>
+  <div class="overflow-auto bg-white p-4 rounded shadow">
+    <table class="min-w-full text-sm" id="dataTbl">
+      <thead class="bg-gray-200">
+        <tr>
+          <th>Roll</th><th>Name</th><th>Total</th><th>Pass/Fail</th>
+          <!-- Other headers -->
+          <th>Grade</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
   <script>
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzDTkB7JgOebvxXrQhLm7OPPLtgBnaxv7erkErbdkAVUgZfkHoXpThnEkymc3OORQj8/exec';
-    const form = document.getElementById('studentForm');
-    const tbody = document.querySelector('#resultsTable tbody');
-    const fields = ['kuran_tajvid','akaid_fikah','hadis','gmath','chemistry_ict','arabic1','arabic2','english1','english2','bengali1','bengali2','ishistory_physics','phedu_bio','ag_hmath'];
+  const APP_URL = 'https://script.google.com/macros/s/AKfycbxXFdI_hygAkD91oODjQA10CbJzvSty6jN75NkR9bM203u0DHxvN2wHOl0F7_Ye0r0G/exec';
+  const fields = [
+    'kuran_tajvid','akaid_fikah','hadis','arabic1','arabic2','gmath',
+    'english1','english2','bengali1','bengali2','ishistory_physics',
+    'phedu_bio','chemistry_ict','ag_hmath'
+  ];
+  const form = document.getElementById('entryForm');
+  const grid = document.getElementById('scoresGrid');
+  const tbody = document.querySelector('#dataTbl tbody');
 
-    function calcTotals(data) {
-      let total = 0, countPass = true;
-      fields.forEach(f => {
-        const v = parseFloat(data[f]) || 0;
-        total += v;
-        if (v < 33) countPass = false;
-      });
-      const cgpa = total / (fields.length * 20);
-      let gradePoint=0, grade='F';
-      if(cgpa>=4.0){gradePoint=5;grade='A+';}
-      else if(cgpa>=3.5){gradePoint=4;grade='A';}
-      else if(cgpa>=3.0){gradePoint=3.5;grade='A-';}
-      else if(cgpa>=2.5){gradePoint=3;grade='B';}
-      else if(cgpa>=2.0){gradePoint=2;grade='C';}
-      else if(cgpa>=1.0){gradePoint=1;grade='D';}
-      data.total = total.toFixed(2);
-      data.pass_fail = countPass ? 'Pass' : 'Fail';
-      data.cgpa = gradePoint.toFixed(2);
-      data.grade = grade;
-    }
+  // helper
+  function sn(s){ return s.split('+').reduce((a,p)=>a+parseFloat(p||0),0); }
+  function gradePoint(x){
+    if (x>=80) return [5.00,'A+'];
+    if (x>=70) return [4.00,'A'];
+    if (x>=60) return [3.50,'A−'];
+    if (x>=50) return [3.00,'B'];
+    if (x>=40) return [2.00,'C'];
+    if (x>=33) return [1.00,'D'];
+    return [0.00,'F'];
+  }
 
-    function refresh(dataList=[]) {
-      tbody.innerHTML = '';
-      dataList.forEach(d => {
-        calcTotals(d);
-        const row = document.createElement('tr');
-        ['roll','name','total','pass_fail',...fields,'cgpa','grade'].forEach(c => {
-          const td = document.createElement('td');
-          td.textContent = d[c];
-          td.className = 'p-2 border text-center';
-          row.appendChild(td);
+  // build inputs
+  fields.forEach(fn=>{
+    const tpl = document.getElementById('score-template');
+    const el = tpl.content.cloneNode(true);
+    const lbl = el.querySelector('label');
+    const inp = el.querySelector('input');
+    lbl.textContent = fn.replace(/_/g,' ').toUpperCase();
+    inp.name = fn;
+    grid.appendChild(el);
+  });
+
+  async function fetchAll(){
+    const res = await fetch(APP_URL);
+    return res.json();
+  }
+  function renderRows(data){
+    tbody.innerHTML='';
+    data.forEach(r=>{
+      const tr = document.createElement('tr');
+      const total = fields.reduce((a,f)=>a + parseFloat(r[f]||0),0);
+      const [pt,gr] = gradePoint(total/fields.length);
+      const pf = pt>0 ? 'Pass' : 'Fail';
+      ['roll','name'].concat(['total','pass_fail'],fields,['cgpa','grade'])
+        .forEach(col=>{
+          const td = tr.appendChild(document.createElement('td'));
+          if(col==='total') td.textContent = total.toFixed(2);
+          else if(col==='pass_fail') td.textContent = pf;
+          else if(col==='cgpa') td.textContent = (total/fields.length/20).toFixed(2);
+          else if(col==='grade') td.textContent = gr;
+          else td.textContent = r[col] || '';
         });
-        const act = document.createElement('td'); act.className='p-2 border';
-        const btnE = document.createElement('button');
-        btnE.textContent='Edit'; btnE.className='bg-yellow-300 px-2 rounded mr-2';
-        btnE.onclick = () => {
-          Object.keys(d).forEach(k => {
-            if(form[k]) form[k].value = d[k];
-          });
-        };
-        const btnD = document.createElement('button');
-        btnD.textContent='Delete'; btnD.className='bg-red-400 px-2 rounded';
-        btnD.onclick = () => {
-          if(confirm('Delete this?')) {
-            fetch(`${SCRIPT_URL}?action=delete&roll=${d.roll}`).then(r=>r.json()).then(() => loadAll());
+      // actions
+      const act = tr.appendChild(document.createElement('td'));
+      ['Edit','Delete'].forEach(txt=>{
+        const b = document.createElement('button');
+        b.textContent=txt;
+        b.className = txt==='Edit'?'btn-yellow':'btn-red';
+        b.onclick = ()=>{
+          if(txt==='Edit'){
+            Object.entries(r).forEach(([k,v])=>{
+              if(form.elements[k]) form.elements[k].value = v;
+            });
+          } else {
+            if(confirm('Delete record?'))
+              fetch(APP_URL+'?action=delete',{ method:'POST', body: JSON.stringify({roll:r.roll})})
+              .then(()=> load());
           }
         };
-        act.appendChild(btnE);
-        act.appendChild(btnD);
-        row.appendChild(act);
-        tbody.appendChild(row);
+        act.appendChild(b);
       });
-    }
-
-    function loadAll() {
-      fetch(`${SCRIPT_URL}?action=list`).then(r=>r.json()).then(d=>refresh(d));
-    }
-
-    form.addEventListener('submit', e => {
-      e.preventDefault();
-      const data = {};
-      new FormData(form).forEach((v,k)=>data[k]=v.trim());
-      calcTotals(data);
-      fetch(SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify({...data, action: 'upsert'})
-      }).then(r=>r.json()).then(resp => {
-        alert(resp.status);
-        loadAll();
-        form.reset();
-      });
+      tbody.appendChild(tr);
     });
+  }
 
-    document.getElementById('searchBtn').onclick = () => {
-      const roll = form.roll.value.trim();
-      if(!roll) return alert('Enter roll to search');
-      fetch(`${SCRIPT_URL}?action=get&roll=${roll}`).then(r=>r.json()).then(d => {
-        if(d.roll) { refresh([d]); }
-        else alert('Not found');
+  async function load(){
+    const all = await fetchAll();
+    renderRows(all);
+  }
+
+  form.onsubmit = async e=>{
+    e.preventDefault();
+    const fd = new FormData(form);
+    const payload = {action:'create'};
+    for(const k of [...form.elements].filter(i=>i.name)) {
+      payload[k.name] = k.value;
+    }
+    await fetch(APP_URL+'?action=create',{
+      method:'POST',
+      body: JSON.stringify(payload)
+    });
+    form.reset();
+    load();
+  };
+
+  document.getElementById('resetBtn').onclick = () => form.reset();
+
+  document.getElementById('searchBtn').onclick = async () => {
+    const roll = form.elements.roll.value.trim();
+    if(!roll) return alert('Enter roll');
+    const all = await fetchAll();
+    const rec = all.find(r=>r.roll===roll);
+    if(rec){
+      Object.entries(rec).forEach(([k,v])=>{
+        if(form.elements[k]) form.elements[k].value = v;
       });
-    };
-    document.getElementById('printBtn').onclick = () => {
-      const hide = document.querySelectorAll('td:last-child, th:last-child');
-      hide.forEach(el => el.style.display='none');
-      window.print();
-      hide.forEach(el => el.style.display='table-cell');
-    };
-    loadAll();
+    } else alert('Not found');
+  };
+
+  document.getElementById('printBtn').onclick = ()=> {
+    const tbl = document.querySelector('#dataTbl');
+    const clone = tbl.cloneNode(true);
+    Array.from(clone.querySelectorAll('th:last-child,td:last-child')).forEach(n => n.remove());
+    const w = window.open();
+    w.document.write('<html><head><title>Print</title>');
+    w.document.write('<style>table{width:100%;border-collapse:collapse}td,th{border:1px solid #000;padding:4px}</style>');
+    w.document.write('</head><body>' + clone.outerHTML + '</body></html>');
+    w.print();
+    w.close();
+  };
+
+  load();
   </script>
+
+  <style>
+  .input-base{width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:4px;}
+  .btn-blue{background:#3b82f6;color:#fff;padding:0.5rem 1rem;border:none;border-radius:4px;}
+  .btn-gray{background:#9ca3af;color:#fff;padding:0.5rem;}
+  .btn-yellow{background:#f59e0b;color:#fff;padding:0.25rem 0.5rem;margin-right:4px;}
+  .btn-red{background:#ef4444;color:#fff;padding:0.25rem 0.5rem;margin-left:4px;}
+  .btn-green{background:#10b981;color:#fff;padding:0.5rem 1rem;}
+  </style>
 </body>
 </html>
