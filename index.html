@@ -1,149 +1,151 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Student Results</title>
+  <meta charset="UTF-8" />
+  <title>Result Manager</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-6">
-  <div class="max-w-4xl mx-auto">
-    <h1 class="text-2xl font-bold mb-4">Student Result Entry</h1>
-    <form id="entryForm" class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-6 shadow rounded">
-      <input type="text" id="name" placeholder="Name" class="...">
-      <input type="text" id="roll" placeholder="Roll (Unique)" class="...">
-      <input type="text" id="kuran_tajvid" placeholder="Kuran & Tajvid (CQ+MCQ)" class="...">
-      <input type="text" id="akaid_fikah" placeholder="Akaid & Fikah (CQ+MCQ)" class="...">
-      <input type="text" id="hadis" placeholder="Hadis (CQ+MCQ)" class="...">
-      <input type="text" id="arabic1" placeholder="Arabic 1" class="...">
-      <input type="text" id="arabic2" placeholder="Arabic 2" class="...">
-      <input type="text" id="gmath" placeholder="GMath" class="...">
-      <input type="text" id="english1" placeholder="English 1" class="...">
-      <input type="text" id="english2" placeholder="English 2" class="...">
-      <input type="text" id="bengali1" placeholder="Bengali 1 (CQ+MCQ)" class="...">
-      <input type="text" id="bengali2" placeholder="Bengali 2 (CQ+MCQ)" class="...">
-      <input type="text" id="ishistory_physics" placeholder="Islamic History / Physics (CQ+MCQ)" class="...">
-      <input type="text" id="phedu_bio" placeholder="PE / Biology (CQ+MCQ)" class="...">
-      <input type="text" id="chemistry_ict" placeholder="Chemistry/ICT (CQ+MCQ)" class="...">
-      <input type="text" id="ag_hmath" placeholder="Ag / HMath (CQ+MCQ)" class="...">
-      <button type="submit" class="bg-blue-600 text-white py-2 rounded">Save / Update</button>
-      <button type="button" id="printBtn" class="bg-green-600 text-white py-2 rounded">Print</button>
-      <input type="text" id="search" placeholder="Search by Roll or Name" class="...">
+  <div class="max-w-5xl mx-auto">
+    <h1 class="text-3xl mb-4">Result Manager</h1>
+    <!-- Form -->
+    <form id="form" class="bg-white p-4 rounded shadow mb-6 grid grid-cols-2 gap-4">
+      <!-- Name + Roll -->
+      <div>
+        <label>Name</label><input name="name" required class="input"/>
+      </div>
+      <div>
+        <label>Roll</label><input name="roll" required class="input"/>
+      </div>
+      <!-- Scores -->
+      <template id="f">
+        <div>
+          <label></label><input class="input" name=""></input>
+        </div>
+      </template>
     </form>
 
-    <div class="mt-6 overflow-auto bg-white shadow rounded">
-      <table class="min-w-full">
-        <thead class="bg-gray-200"><tr><!-- headers here --></tr></thead>
-        <tbody id="tableBody"></tbody>
-      </table>
+    <div class="mb-4">
+      <label>Search:</label><input id="search" class="input"/>
+      <button id="print" class="btn bg-green-500 text-white ml-2">Print</button>
     </div>
+
+    <table id="tbl" class="min-w-full bg-white shadow rounded">
+      <thead class="bg-gray-200"><tr>
+        ["roll","name","total","pass_fail","kuran_tajvid","akaid_fikah","hadis","arabic1","arabic2","gmath","english1","english2","bengali1","bengali2","ishistory_physics","phedu_bio","chemistry_ict","ag_hmath","cgpa","grade"].forEach(c=>document.write(`<th class="p-2 border">${c.replace('_','/')}</th>`));
+        document.write(`<th class="p-2 border">Actions</th>`);
+      </tr></thead>
+      <tbody></tbody>
+    </table>
   </div>
 
   <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbz7a6mR-JUKBrd7vfg7vDtAT4B9iqxleJSmNhhdsPDK8pqE0Jsz85WrzGo8XVMvSJ2x/exec';
+    const FIELDS=[
+      "kuran_tajvid","akaid_fikah","hadis","arabic1","arabic2",
+      "gmath","english1","english2","bengali1","bengali2",
+      "ishistory_physics","phedu_bio","chemistry_ict","ag_hmath"
+    ];
 
-    // Utility functions: evaluate input (add/sub/mult/div)
-    function compute(val) {
-      try {
-        return +eval(val);
-      } catch {
-        return NaN;
-      }
+    const form = document.getElementById('form');
+    const tmpl = document.getElementById('f');
+    FIELDS.forEach(f=>{
+      const d = tmpl.content.cloneNode(true);
+      d.querySelector('label').innerText = f.replace('_','/');
+      d.querySelector('input').name = f;
+      form.appendChild(d);
+    });
+
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxwYIuwkb67D9Z6UjIkpHv1ZKF01jGxhbn9XiENWipIIiOUmLMf3uSV_UTah92mZ4Gz/exec';
+
+    async function fetchAll(){
+      const d = await fetch(API_URL).then(r=>r.json());
+      window.data = d;
+      display(d);
     }
 
-    function gradeFromPoint(point) {
-      if (point >=5) return ['A+', 'F'];
-      if (point >=4) return ['A', 'P'];
-      if (point >=3.5) return ['A−', 'P'];
-      if (point >=3) return ['B', 'P'];
-      if (point >=2) return ['C', 'P'];
-      if (point >=1) return ['D', 'P'];
-      return ['F', 'F'];
+    function calcTotals(obj){
+      let sum = 0, fail=false;
+      FIELDS.forEach(f=>{
+        const v = parseFloat(obj[f])||0;
+        sum += v;
+        if(v<33) fail=true;
+      });
+      obj.total = sum;
+      obj.pass_fail = fail?'Fail':'Pass';
+      obj.cgpa = (sum / (FIELDS.length*100) *5).toFixed(2);
+      const p = (sum / (FIELDS.length*100))*100;
+      const G=[80,70,60,50,40,33,0].find((t,i)=>p>=t);
+      const map={'80':'A+','70':'A','60':'A−','50':'B','40':'C','33':'D','0':'F'};
+      obj.grade = map[G];
     }
 
-    async function fetchAll() {
-      const res = await fetch(scriptURL + '?action=READ');
-      const {data} = await res.json();
-      return data;
-    }
-
-    function renderTable(data) {
-      const tbody = document.getElementById('tableBody');
-      tbody.innerHTML = '';
-      data.forEach(item => {
+    function display(arr){
+      const tb = document.querySelector('#tbl tbody');
+      tb.innerHTML = '';
+      arr.filter(r=> {
+        const q = document.getElementById('search').value.toLowerCase();
+        return !q || r.name.toLowerCase().includes(q)|| r.roll.includes(q);
+      }).forEach(r=>{
         const tr = document.createElement('tr');
-        ['roll','name','total','pass_fail','kuran_tajvid','hadis','akaid_fikah','arabic1','arabic2','english1','english2','bengali1','bengali2','ishistory_physics','gmath','phedu_bio','chemistry_ict','ag_hmath','cgpa','grade']
-          .forEach(key => {
-            const td = document.createElement('td');
-            td.innerText = item[key];
-            td.className = 'border px-2 py-1';
-            tr.appendChild(td);
-          });
-        const actions = document.createElement('td');
-        actions.className = 'border px-2 py-1 space-x-1';
-        const edit = document.createElement('button');
-        edit.innerText = 'Edit';edit.className='bg-yellow-400 px-2 rounded';
-        edit.onclick = () => populate(item);
-        const del = document.createElement('button');
-        del.innerText = 'Delete';del.className='bg-red-400 px-2 rounded';
-        del.onclick = () => doDelete(item.roll);
-        actions.append(edit, del);
-        tr.appendChild(actions);
-        tbody.appendChild(tr);
+        [...FIELDS,'total','pass_fail','cgpa','grade','roll','name'].forEach(c=>{
+          const td = document.createElement('td');
+          td.innerText = r[c];
+          td.className='p-1 border text-center';
+          tr.appendChild(td);
+        });
+        const act = document.createElement('td');
+        act.className='p-1 border text-center';
+        ['Edit','Delete'].forEach(a=>{
+          const b = document.createElement('button');
+          b.innerText = a;
+          b.className='btn m-1 bg-blue-500 text-white';
+          b.onclick = ()=>{
+            if(a=='Delete'){
+              if(!confirm('Delete?')) return;
+              post('delete',r).then(fetchAll);
+            } else {
+              Object.keys(r).forEach(k=>{
+                if(form[k]) form[k].value = r[k];
+              });
+            }
+          };
+          act.appendChild(b);
+        });
+        tr.appendChild(act);
+        tb.appendChild(tr);
       });
     }
 
-    function populate(it) {
-      for (let k in it) {
-        if (document.getElementById(k))
-          document.getElementById(k).value = it[k];
-      }
-    }
-
-    async function doDelete(roll) {
-      await fetch(scriptURL, {
+    async function post(action,data){
+      calcTotals(data);
+      const res = await fetch(API_URL, {
         method:'POST',
-        body: JSON.stringify({action:'DELETE', roll})
-      });
-      load();
+        body: JSON.stringify({action,data})
+      }).then(r=>r.json());
+      if(res.status!='ok') alert(res.message);
+      return res;
     }
 
-    async function upsert(item) {
-      await fetch(scriptURL, {
-        method:'POST',
-        body: JSON.stringify(item)
-      });
-    }
-
-    async function load() {
-      const all = await fetchAll();
-      const search = document.getElementById('search').value.toLowerCase();
-      renderTable(search ? all.filter(r=>r.roll.toLowerCase().includes(search)||r.name.toLowerCase().includes(search)) : all);
-    }
-
-    document.getElementById('search').oninput = load;
-    document.getElementById('printBtn').onclick = ()=>window.print();
-
-    document.getElementById('entryForm').onsubmit = async e => {
+    form.onsubmit = e=>{
       e.preventDefault();
-      const fields = ['name','roll','kuran_tajvid','akaid_fikah','hadis','arabic1','arabic2','gmath','english1','english2','bengali1','bengali2','ishistory_physics','phedu_bio','chemistry_ict','ag_hmath'];
-      let obj = {action:'CREATE'};
-      fields.forEach(f => obj[f] = compute(document.getElementById(f).value));
-      obj.name = document.getElementById('name').value.trim();
-      obj.roll = document.getElementById('roll').value.trim();
-      // compute total, CGPA, grade
-      const subs = fields.filter(f=>f!=='name'&&f!=='roll').map(f=>obj[f]);
-      obj.total = subs.reduce((a,b)=>a+b,0);
-      obj.cgpa = (obj.total/(subs.length*100))*5;
-      const [grade, pf] = gradeFromPoint(obj.cgpa);
-      obj.grade = grade; obj.pass_fail = pf;
-      obj.roll = obj.roll.toString();
-      await upsert(obj);
-      document.getElementById('entryForm').reset();
-      load();
+      const d = Object.fromEntries(new FormData(form));
+      post('create',d).then(fetchAll);
     };
 
-    // init
-    load();
+    document.getElementById('search').oninput=()=>display(window.data);
+    document.getElementById('print').onclick=()=> window.print();
+
+    fetchAll();
   </script>
+
+  <style>
+    .input {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: .25rem;
+    }
+    .btn { padding: 0.5rem 1rem; border-radius: .25rem; }
+  </style>
 </body>
 </html>
