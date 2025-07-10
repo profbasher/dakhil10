@@ -1,184 +1,149 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Results App</title>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Results</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-6">
-  <h1 class="text-2xl mb-4">Results Entry</h1>
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">Student Result Entry</h1>
+    <form id="entryForm" class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-6 shadow rounded">
+      <input type="text" id="name" placeholder="Name" class="...">
+      <input type="text" id="roll" placeholder="Roll (Unique)" class="...">
+      <input type="text" id="kuran_tajvid" placeholder="Kuran & Tajvid (CQ+MCQ)" class="...">
+      <input type="text" id="akaid_fikah" placeholder="Akaid & Fikah (CQ+MCQ)" class="...">
+      <input type="text" id="hadis" placeholder="Hadis (CQ+MCQ)" class="...">
+      <input type="text" id="arabic1" placeholder="Arabic 1" class="...">
+      <input type="text" id="arabic2" placeholder="Arabic 2" class="...">
+      <input type="text" id="gmath" placeholder="GMath" class="...">
+      <input type="text" id="english1" placeholder="English 1" class="...">
+      <input type="text" id="english2" placeholder="English 2" class="...">
+      <input type="text" id="bengali1" placeholder="Bengali 1 (CQ+MCQ)" class="...">
+      <input type="text" id="bengali2" placeholder="Bengali 2 (CQ+MCQ)" class="...">
+      <input type="text" id="ishistory_physics" placeholder="Islamic History / Physics (CQ+MCQ)" class="...">
+      <input type="text" id="phedu_bio" placeholder="PE / Biology (CQ+MCQ)" class="...">
+      <input type="text" id="chemistry_ict" placeholder="Chemistry/ICT (CQ+MCQ)" class="...">
+      <input type="text" id="ag_hmath" placeholder="Ag / HMath (CQ+MCQ)" class="...">
+      <button type="submit" class="bg-blue-600 text-white py-2 rounded">Save / Update</button>
+      <button type="button" id="printBtn" class="bg-green-600 text-white py-2 rounded">Print</button>
+      <input type="text" id="search" placeholder="Search by Roll or Name" class="...">
+    </form>
 
-  <form id="entryForm" class="bg-white p-4 rounded shadow mb-6 space-y-4">
-    <div class="grid grid-cols-2 gap-4">
-      <input name="name" placeholder="Name" required class="input-base" />
-      <input name="roll" placeholder="Roll" required class="input-base"/>
-      <!-- Score inputs: -->
-      <template id="score-template">
-        <div class="col-span-1">
-          <label class="block text-sm text-gray-700"></label>
-          <input type="text" name="" placeholder="e.g. 45+22" class="input-base"/>
-        </div>
-      </template>
+    <div class="mt-6 overflow-auto bg-white shadow rounded">
+      <table class="min-w-full">
+        <thead class="bg-gray-200"><tr><!-- headers here --></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
     </div>
-    <!-- Add all required score fields -->
-    <div id="scoresGrid" class="grid grid-cols-2 lg:grid-cols-3 gap-4"></div>
-    <div class="flex space-x-2">
-      <button type="submit" class="btn-blue">Save</button>
-      <button type="button" id="resetBtn" class="btn-gray">Reset</button>
-      <button type="button" id="searchBtn" class="btn-yellow">Search by Roll</button>
-    </div>
-  </form>
-
-  <div class="flex justify-between mb-4">
-    <h2 class="text-xl">Records</h2>
-    <button id="printBtn" class="btn-green">Print</button>
-  </div>
-  <div class="overflow-auto bg-white p-4 rounded shadow">
-    <table class="min-w-full text-sm" id="dataTbl">
-      <thead class="bg-gray-200">
-        <tr>
-          <th>Roll</th><th>Name</th><th>Total</th><th>Pass/Fail</th>
-          <!-- Other headers -->
-          <th>Grade</th><th>Actions</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
   </div>
 
   <script>
-  const APP_URL = 'https://script.google.com/macros/s/AKfycbxXFdI_hygAkD91oODjQA10CbJzvSty6jN75NkR9bM203u0DHxvN2wHOl0F7_Ye0r0G/exec';
-  const fields = [
-    'kuran_tajvid','akaid_fikah','hadis','arabic1','arabic2','gmath',
-    'english1','english2','bengali1','bengali2','ishistory_physics',
-    'phedu_bio','chemistry_ict','ag_hmath'
-  ];
-  const form = document.getElementById('entryForm');
-  const grid = document.getElementById('scoresGrid');
-  const tbody = document.querySelector('#dataTbl tbody');
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbyrFIZbZSt0SNMMUwsU9xpiKugQTqrBUeOkph3zrCdcz26vuhbggks2rraS9olS0a8K/exec';
 
-  // helper
-  function sn(s){ return s.split('+').reduce((a,p)=>a+parseFloat(p||0),0); }
-  function gradePoint(x){
-    if (x>=80) return [5.00,'A+'];
-    if (x>=70) return [4.00,'A'];
-    if (x>=60) return [3.50,'A−'];
-    if (x>=50) return [3.00,'B'];
-    if (x>=40) return [2.00,'C'];
-    if (x>=33) return [1.00,'D'];
-    return [0.00,'F'];
-  }
-
-  // build inputs
-  fields.forEach(fn=>{
-    const tpl = document.getElementById('score-template');
-    const el = tpl.content.cloneNode(true);
-    const lbl = el.querySelector('label');
-    const inp = el.querySelector('input');
-    lbl.textContent = fn.replace(/_/g,' ').toUpperCase();
-    inp.name = fn;
-    grid.appendChild(el);
-  });
-
-  async function fetchAll(){
-    const res = await fetch(APP_URL);
-    return res.json();
-  }
-  function renderRows(data){
-    tbody.innerHTML='';
-    data.forEach(r=>{
-      const tr = document.createElement('tr');
-      const total = fields.reduce((a,f)=>a + parseFloat(r[f]||0),0);
-      const [pt,gr] = gradePoint(total/fields.length);
-      const pf = pt>0 ? 'Pass' : 'Fail';
-      ['roll','name'].concat(['total','pass_fail'],fields,['cgpa','grade'])
-        .forEach(col=>{
-          const td = tr.appendChild(document.createElement('td'));
-          if(col==='total') td.textContent = total.toFixed(2);
-          else if(col==='pass_fail') td.textContent = pf;
-          else if(col==='cgpa') td.textContent = (total/fields.length/20).toFixed(2);
-          else if(col==='grade') td.textContent = gr;
-          else td.textContent = r[col] || '';
-        });
-      // actions
-      const act = tr.appendChild(document.createElement('td'));
-      ['Edit','Delete'].forEach(txt=>{
-        const b = document.createElement('button');
-        b.textContent=txt;
-        b.className = txt==='Edit'?'btn-yellow':'btn-red';
-        b.onclick = ()=>{
-          if(txt==='Edit'){
-            Object.entries(r).forEach(([k,v])=>{
-              if(form.elements[k]) form.elements[k].value = v;
-            });
-          } else {
-            if(confirm('Delete record?'))
-              fetch(APP_URL+'?action=delete',{ method:'POST', body: JSON.stringify({roll:r.roll})})
-              .then(()=> load());
-          }
-        };
-        act.appendChild(b);
-      });
-      tbody.appendChild(tr);
-    });
-  }
-
-  async function load(){
-    const all = await fetchAll();
-    renderRows(all);
-  }
-
-  form.onsubmit = async e=>{
-    e.preventDefault();
-    const fd = new FormData(form);
-    const payload = {action:'create'};
-    for(const k of [...form.elements].filter(i=>i.name)) {
-      payload[k.name] = k.value;
+    // Utility functions: evaluate input (add/sub/mult/div)
+    function compute(val) {
+      try {
+        return +eval(val);
+      } catch {
+        return NaN;
+      }
     }
-    await fetch(APP_URL+'?action=create',{
-      method:'POST',
-      body: JSON.stringify(payload)
-    });
-    form.reset();
-    load();
-  };
 
-  document.getElementById('resetBtn').onclick = () => form.reset();
+    function gradeFromPoint(point) {
+      if (point >=5) return ['A+', 'F'];
+      if (point >=4) return ['A', 'P'];
+      if (point >=3.5) return ['A−', 'P'];
+      if (point >=3) return ['B', 'P'];
+      if (point >=2) return ['C', 'P'];
+      if (point >=1) return ['D', 'P'];
+      return ['F', 'F'];
+    }
 
-  document.getElementById('searchBtn').onclick = async () => {
-    const roll = form.elements.roll.value.trim();
-    if(!roll) return alert('Enter roll');
-    const all = await fetchAll();
-    const rec = all.find(r=>r.roll===roll);
-    if(rec){
-      Object.entries(rec).forEach(([k,v])=>{
-        if(form.elements[k]) form.elements[k].value = v;
+    async function fetchAll() {
+      const res = await fetch(scriptURL + '?action=READ');
+      const {data} = await res.json();
+      return data;
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        ['roll','name','total','pass_fail','kuran_tajvid','hadis','akaid_fikah','arabic1','arabic2','english1','english2','bengali1','bengali2','ishistory_physics','gmath','phedu_bio','chemistry_ict','ag_hmath','cgpa','grade']
+          .forEach(key => {
+            const td = document.createElement('td');
+            td.innerText = item[key];
+            td.className = 'border px-2 py-1';
+            tr.appendChild(td);
+          });
+        const actions = document.createElement('td');
+        actions.className = 'border px-2 py-1 space-x-1';
+        const edit = document.createElement('button');
+        edit.innerText = 'Edit';edit.className='bg-yellow-400 px-2 rounded';
+        edit.onclick = () => populate(item);
+        const del = document.createElement('button');
+        del.innerText = 'Delete';del.className='bg-red-400 px-2 rounded';
+        del.onclick = () => doDelete(item.roll);
+        actions.append(edit, del);
+        tr.appendChild(actions);
+        tbody.appendChild(tr);
       });
-    } else alert('Not found');
-  };
+    }
 
-  document.getElementById('printBtn').onclick = ()=> {
-    const tbl = document.querySelector('#dataTbl');
-    const clone = tbl.cloneNode(true);
-    Array.from(clone.querySelectorAll('th:last-child,td:last-child')).forEach(n => n.remove());
-    const w = window.open();
-    w.document.write('<html><head><title>Print</title>');
-    w.document.write('<style>table{width:100%;border-collapse:collapse}td,th{border:1px solid #000;padding:4px}</style>');
-    w.document.write('</head><body>' + clone.outerHTML + '</body></html>');
-    w.print();
-    w.close();
-  };
+    function populate(it) {
+      for (let k in it) {
+        if (document.getElementById(k))
+          document.getElementById(k).value = it[k];
+      }
+    }
 
-  load();
+    async function doDelete(roll) {
+      await fetch(scriptURL, {
+        method:'POST',
+        body: JSON.stringify({action:'DELETE', roll})
+      });
+      load();
+    }
+
+    async function upsert(item) {
+      await fetch(scriptURL, {
+        method:'POST',
+        body: JSON.stringify(item)
+      });
+    }
+
+    async function load() {
+      const all = await fetchAll();
+      const search = document.getElementById('search').value.toLowerCase();
+      renderTable(search ? all.filter(r=>r.roll.toLowerCase().includes(search)||r.name.toLowerCase().includes(search)) : all);
+    }
+
+    document.getElementById('search').oninput = load;
+    document.getElementById('printBtn').onclick = ()=>window.print();
+
+    document.getElementById('entryForm').onsubmit = async e => {
+      e.preventDefault();
+      const fields = ['name','roll','kuran_tajvid','akaid_fikah','hadis','arabic1','arabic2','gmath','english1','english2','bengali1','bengali2','ishistory_physics','phedu_bio','chemistry_ict','ag_hmath'];
+      let obj = {action:'CREATE'};
+      fields.forEach(f => obj[f] = compute(document.getElementById(f).value));
+      obj.name = document.getElementById('name').value.trim();
+      obj.roll = document.getElementById('roll').value.trim();
+      // compute total, CGPA, grade
+      const subs = fields.filter(f=>f!=='name'&&f!=='roll').map(f=>obj[f]);
+      obj.total = subs.reduce((a,b)=>a+b,0);
+      obj.cgpa = (obj.total/(subs.length*100))*5;
+      const [grade, pf] = gradeFromPoint(obj.cgpa);
+      obj.grade = grade; obj.pass_fail = pf;
+      obj.roll = obj.roll.toString();
+      await upsert(obj);
+      document.getElementById('entryForm').reset();
+      load();
+    };
+
+    // init
+    load();
   </script>
-
-  <style>
-  .input-base{width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:4px;}
-  .btn-blue{background:#3b82f6;color:#fff;padding:0.5rem 1rem;border:none;border-radius:4px;}
-  .btn-gray{background:#9ca3af;color:#fff;padding:0.5rem;}
-  .btn-yellow{background:#f59e0b;color:#fff;padding:0.25rem 0.5rem;margin-right:4px;}
-  .btn-red{background:#ef4444;color:#fff;padding:0.25rem 0.5rem;margin-left:4px;}
-  .btn-green{background:#10b981;color:#fff;padding:0.5rem 1rem;}
-  </style>
 </body>
 </html>
